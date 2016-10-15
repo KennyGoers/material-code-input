@@ -137,7 +137,7 @@ public class CodeInput extends View {
         hintText = attributes.getString(R.styleable.core_area_hint_text);
         underlineAmount = attributes.getInt(R.styleable.core_area_codes, underlineAmount);
         textColor = attributes.getInt(R.styleable.core_area_text_color, textColor);
-        
+
         attributes.recycle();
     }
 
@@ -227,7 +227,7 @@ public class CodeInput extends View {
         inputmethodmanager.viewClicked(this);
     }
 
-    private void hideKeyBoard(){
+    private void hideKeyBoard() {
         InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Activity.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(getWindowToken(), InputMethodManager.RESULT_UNCHANGED_SHOWN);
     }
@@ -235,6 +235,7 @@ public class CodeInput extends View {
     /**
      * Set Input type like InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_NUMBER
      * Doesn't work for password
+     *
      * @param inputType
      */
     public void setInputType(int inputType) {
@@ -317,6 +318,16 @@ public class CodeInput extends View {
                 }
             }
         }, animationDuration);
+    }
+
+    /**
+     * Set code length
+     *
+     * @param codeLength number of underlines
+     */
+    public void setCodeLength(int codeLength) {
+        this.underlineAmount = codeLength;
+        initDataStructures();
     }
 
     /**
