@@ -64,7 +64,7 @@ public class CodeInput extends View {
     private String hintText;
     private int mInputType;
 
-    private codeReadyListener listener;
+    private CodeReadyListener listener;
 
     public CodeInput(Context context) {
         super(context);
@@ -78,14 +78,13 @@ public class CodeInput extends View {
         this.listener = null;
     }
 
-
     public CodeInput(Context context, AttributeSet attributeset, int defStyledAttrs) {
         super(context, attributeset, defStyledAttrs);
         init(attributeset);
         this.listener = null;
     }
 
-    public void setCodeReadyListener(codeReadyListener listener) {
+    public void setCodeReadyListener(CodeReadyListener listener) {
         this.listener = listener;
     }
 
@@ -98,11 +97,12 @@ public class CodeInput extends View {
         initViewOptions();
     }
 
-    public interface codeReadyListener {
+    public interface CodeReadyListener {
         // These methods are the different events and
         // need to pass relevant arguments related to the event triggered
-        public void onCodeReady(Character[] code);
+        void onCodeReady(String code);
 
+        void onCodeEntered(int pos, Character character);
     }
 
     private void initDefaultAttributes() {
@@ -127,12 +127,11 @@ public class CodeInput extends View {
     }
 
     private void initCustomAttributes(AttributeSet attributeset) {
-        TypedArray attributes =
-                getContext().obtainStyledAttributes(attributeset, R.styleable.core_area);
+        TypedArray attributes = getContext().obtainStyledAttributes(attributeset, R.styleable.core_area);
 
         underlineColor = attributes.getColor(R.styleable.core_area_underline_color, underlineColor);
         underlineSelectedColor =
-                attributes.getColor(R.styleable.core_area_underline_selected_color, underlineSelectedColor);
+            attributes.getColor(R.styleable.core_area_underline_selected_color, underlineSelectedColor);
         hintColor = attributes.getColor(R.styleable.core_area_underline_color, hintColor);
         hintText = attributes.getString(R.styleable.core_area_hint_text);
         underlineAmount = attributes.getInt(R.styleable.core_area_codes, underlineAmount);
@@ -198,7 +197,7 @@ public class CodeInput extends View {
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged((int) ((underlineWidth + underlineReduction) * DEFAULT_CODES), (int) viewHeight, oldw, oldh);
+        super.onSizeChanged((int) (underlineWidth * underlineAmount), (int) viewHeight, oldw, oldh);
         height = h;
         initUnderline();
     }
@@ -206,7 +205,7 @@ public class CodeInput extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        setMeasuredDimension((int) ((underlineWidth + underlineReduction) * DEFAULT_CODES), (int) viewHeight);
+        setMeasuredDimension((int) (underlineWidth * underlineAmount), (int) viewHeight);
     }
 
     private void initUnderline() {
@@ -222,7 +221,7 @@ public class CodeInput extends View {
 
     private void showKeyboard() {
         InputMethodManager inputmethodmanager =
-                (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         inputmethodmanager.showSoftInput(this, InputMethodManager.RESULT_UNCHANGED_SHOWN);
         inputmethodmanager.viewClicked(this);
     }
@@ -235,8 +234,6 @@ public class CodeInput extends View {
     /**
      * Set Input type like InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_NUMBER
      * Doesn't work for password
-     *
-     * @param inputType
      */
     public void setInputType(int inputType) {
         mInputType = inputType;
@@ -274,7 +271,7 @@ public class CodeInput extends View {
      */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent keyevent) {
-        if (keyCode == KeyEvent.KEYCODE_DEL && characters.size() != 0) {
+        if ((keyCode == KeyEvent.KEYCODE_DEL || keyCode == KeyEvent.KEYCODE_COMMA) && characters.size() != 0) {
             characters.pop();
         }
         return super.onKeyDown(keyCode, keyevent);
@@ -289,13 +286,16 @@ public class CodeInput extends View {
         return inputText(text);
     }
 
-
     /**
      * Set Code
      *
      * @param code code to set
      */
     public void setCode(final String code) {
+        setCode(code, true);
+    }
+
+    private void setCode(final String code, final boolean hideKeyboardIfEmpty) {
         if (underlined) {
             startAnimation();
         }
@@ -312,12 +312,16 @@ public class CodeInput extends View {
                     stringBuilder.append(c);
                     inputText(String.valueOf(stringBuilder));
                 }
-                if (characters.isEmpty()) {
+                if (characters.isEmpty() && hideKeyboardIfEmpty) {
                     hideKeyBoard();
                     reverseAnimation();
                 }
             }
         }, animationDuration);
+    }
+
+    public void clearCode() {
+        setCode("", false);
     }
 
     /**
@@ -328,6 +332,7 @@ public class CodeInput extends View {
     public void setCodeLength(int codeLength) {
         this.underlineAmount = codeLength;
         initDataStructures();
+        invalidate();
     }
 
     /**
@@ -339,9 +344,13 @@ public class CodeInput extends View {
      */
     private boolean inputText(String text) {
         Matcher matcher = KEYCODE_PATTERN.matcher(text);
-        if (matcher.matches()) {
+        if (isEnabled() && matcher.matches()) {
             char character = matcher.group(1).charAt(0);
             characters.push(character);
+
+            if (listener != null) {
+                listener.onCodeEntered(characters.size() - 1, character);
+            }
             if (characters.size() >= underlineAmount) {
                 if (listener != null) {
                     listener.onCodeReady(getCode());
@@ -353,18 +362,22 @@ public class CodeInput extends View {
         }
     }
 
+    public void setCodeInputMode() {
+        requestFocus();
+        if (underlined) {
+            startAnimation();
+        }
+
+        showKeyboard();
+    }
+
     /**
      * When a touch is detected the view need to focus and animate if is necessary
      */
     @Override
     public boolean onTouchEvent(MotionEvent motionevent) {
         if (motionevent.getAction() == 0) {
-            requestFocus();
-            if (underlined) {
-                startAnimation();
-            }
-
-            showKeyboard();
+            setCodeInputMode();
         }
         return super.onTouchEvent(motionevent);
     }
@@ -388,8 +401,7 @@ public class CodeInput extends View {
         invalidate();
     }
 
-    private void drawSection(int position, float fromX, float fromY, float toX, float toY,
-                             Canvas canvas) {
+    private void drawSection(int position, float fromX, float fromY, float toX, float toY, Canvas canvas) {
         Paint paint = underlinePaint;
         if (position == characters.size() && !underlined) {
             paint = underlineSelectedPaint;
@@ -408,8 +420,14 @@ public class CodeInput extends View {
         canvas.drawText(hintText, hintX, height - textMarginBottom - hintActualMarginBottom, hintPaint);
     }
 
-    public Character[] getCode() {
-        return characters.toArray(new Character[underlineAmount]);
+    public String getCode() {
+        Character[] codeArray = characters.toArray(new Character[underlineAmount]);
+        StringBuilder sb = new StringBuilder(underlineAmount);
+        for (Character c : codeArray) {
+            sb.append(c);
+        }
+
+        return sb.toString();
     }
 
     /**
