@@ -13,14 +13,11 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
-
 import com.github.glomadrian.codeinputlib.data.FixedStack;
 import com.github.glomadrian.codeinputlib.model.Underline;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -244,7 +241,7 @@ public class CodeInput extends View {
         outAttrs.actionLabel = null;
         outAttrs.inputType = mInputType;
         outAttrs.imeOptions = EditorInfo.IME_ACTION_DONE;
-        return new BaseInputConnection(this, false);
+        return new CodeInputConnection(this, false);
     }
 
     @Override
@@ -271,7 +268,7 @@ public class CodeInput extends View {
      */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent keyevent) {
-        if ((keyCode == KeyEvent.KEYCODE_DEL || keyCode == KeyEvent.KEYCODE_COMMA) && characters.size() != 0) {
+        if ((keyCode == KeyEvent.KEYCODE_DEL) && !characters.isEmpty()) {
             characters.pop();
         }
         return super.onKeyDown(keyCode, keyevent);
